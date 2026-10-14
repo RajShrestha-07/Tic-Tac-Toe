@@ -1,0 +1,183 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Tic Tac Toe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a centered 3x3 board on graph paper with a mode switch above and a scoreboard below. */
+:root {
+  --paper: #eef1f4; --card: #ffffff; --ink: #14233a; --muted: #5c6b80; --line: #cdd5df;
+  --x: #e8452c; --o: #14233a; --win: #fbe3dd;
+  --accent: #14233a; --accent-ink: #eef1f4;
+  --display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1826; --card: #17233a; --ink: #e7ecf4; --muted: #93a2ba; --line: #2a3a56;
+    --x: #ffb02e; --o: #e7ecf4; --win: #3a3320; --accent: #e7ecf4; --accent-ink: #0f1826; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1826; --card: #17233a; --ink: #e7ecf4; --muted: #93a2ba; --line: #2a3a56;
+  --x: #ffb02e; --o: #e7ecf4; --win: #3a3320; --accent: #e7ecf4; --accent-ink: #0f1826; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 1.5;
+  padding-inline: 16px; padding-block: 28px 56px;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 28px 28px; background-position: -1px -1px;
+}
+main { max-width: 420px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
+.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2rem, 9vw, 3rem); line-height: 1; letter-spacing: -0.02em; margin: 0; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--x); outline-offset: 2px; }
+.tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.tab { padding: 7px 12px; font-weight: 600; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 4px; }
+.tab[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+.status { font: 800 1.3rem var(--display); min-height: 1.6em; }
+.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.cell {
+  aspect-ratio: 1; min-width: 0; font: 800 clamp(2.4rem, 16vw, 4rem)/1 var(--display);
+  color: var(--ink); background: var(--card); border: 2px solid var(--ink); border-radius: 4px; padding: 0;
+}
+.cell.x { color: var(--x); }
+.cell.o { color: var(--o); }
+.cell.win { background: var(--win); }
+.cell:disabled { cursor: default; }
+.score { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+.score div { display: flex; flex-direction: column; align-items: center; flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 6px; }
+.score b { font: 800 1.5rem var(--display); }
+.score span { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.btn { font-weight: 600; padding: 9px 14px; color: var(--accent-ink); background: var(--accent); border: 2px solid var(--accent); border-radius: 4px; }
+</style>
+
+<main>
+  <div class="panel">
+    <h1>Tic Tac Toe</h1>
+    <div class="tabs" id="modes">
+      <button class="tab" type="button" data-m="cpu" aria-pressed="true">You vs computer</button>
+      <button class="tab" type="button" data-m="two" aria-pressed="false">Two players</button>
+    </div>
+    <div class="status" id="status" role="status"></div>
+    <div class="board" id="board"></div>
+    <div class="score">
+      <div><b id="sx">0</b><span id="lx">You (X)</span></div>
+      <div><b id="sd">0</b><span>Draws</span></div>
+      <div><b id="so">0</b><span id="lo">Computer (O)</span></div>
+    </div>
+    <button class="btn" id="again" type="button">New round</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  var b, turn, over, mode = "cpu", score = { X: 0, O: 0, D: 0 }, starter = "X";
+  var boardEl = document.getElementById("board");
+  var statusEl = document.getElementById("status");
+  var cells = [];
+
+  for (var i = 0; i < 9; i++) {
+    (function (idx) {
+      var c = document.createElement("button");
+      c.type = "button"; c.className = "cell"; c.setAttribute("aria-label", "Square " + (idx + 1));
+      c.addEventListener("click", function () { play(idx); });
+      boardEl.appendChild(c); cells.push(c);
+    })(i);
+  }
+
+  function winner(bd) {
+    for (var k = 0; k < LINES.length; k++) {
+      var l = LINES[k];
+      if (bd[l[0]] && bd[l[0]] === bd[l[1]] && bd[l[0]] === bd[l[2]]) return { p: bd[l[0]], line: l };
+    }
+    return null;
+  }
+  function full(bd) { return bd.every(function (x) { return x; }); }
+
+  // Minimax: computer plays O and never loses.
+  function minimax(bd, isO) {
+    var w = winner(bd);
+    if (w) return w.p === "O" ? 1 : -1;
+    if (full(bd)) return 0;
+    var best = isO ? -2 : 2;
+    for (var k = 0; k < 9; k++) {
+      if (bd[k]) continue;
+      bd[k] = isO ? "O" : "X";
+      var s = minimax(bd, !isO);
+      bd[k] = null;
+      if (isO ? s > best : s < best) best = s;
+    }
+    return best;
+  }
+  function cpuMove() {
+    var best = -2, pick = -1;
+    for (var k = 0; k < 9; k++) {
+      if (b[k]) continue;
+      b[k] = "O";
+      var s = minimax(b, false);
+      b[k] = null;
+      if (s > best) { best = s; pick = k; }
+    }
+    return pick;
+  }
+
+  function newRound() {
+    b = [null,null,null,null,null,null,null,null,null];
+    over = false;
+    turn = starter;
+    starter = starter === "X" ? "O" : "X";
+    draw();
+    if (mode === "cpu" && turn === "O") setTimeout(function () { play(cpuMove(), true); }, 350);
+  }
+
+  function play(idx, fromCpu) {
+    if (over || b[idx]) return;
+    if (mode === "cpu" && turn === "O" && !fromCpu) return;
+    b[idx] = turn;
+    var w = winner(b);
+    if (w) { over = true; score[w.p]++; draw(w.line, w.p); return; }
+    if (full(b)) { over = true; score.D++; draw(null, "D"); return; }
+    turn = turn === "X" ? "O" : "X";
+    draw();
+    if (mode === "cpu" && turn === "O") setTimeout(function () { play(cpuMove(), true); }, 350);
+  }
+
+  function name(p) {
+    if (mode === "cpu") return p === "X" ? "You" : "The computer";
+    return "Player " + p;
+  }
+
+  function draw(line, res) {
+    cells.forEach(function (c, i) {
+      c.textContent = b[i] || "";
+      c.className = "cell" + (b[i] ? " " + b[i].toLowerCase() : "") + (line && line.indexOf(i) >= 0 ? " win" : "");
+      c.disabled = over || !!b[i];
+    });
+    if (over) statusEl.textContent = res === "D" ? "It's a draw." : name(res) + (mode === "cpu" && res === "X" ? " win!" : " wins!");
+    else statusEl.textContent = (mode === "cpu" ? (turn === "X" ? "Your turn (X)" : "Computer is thinking...") : "Player " + turn + "'s turn");
+    document.getElementById("sx").textContent = score.X;
+    document.getElementById("so").textContent = score.O;
+    document.getElementById("sd").textContent = score.D;
+    document.getElementById("lx").textContent = mode === "cpu" ? "You (X)" : "Player X";
+    document.getElementById("lo").textContent = mode === "cpu" ? "Computer (O)" : "Player O";
+  }
+
+  document.getElementById("modes").addEventListener("click", function (e) {
+    var m = e.target.getAttribute && e.target.getAttribute("data-m");
+    if (!m || m === mode) return;
+    mode = m; score = { X: 0, O: 0, D: 0 }; starter = "X";
+    Array.prototype.forEach.call(document.getElementById("modes").children, function (t) {
+      t.setAttribute("aria-pressed", t.getAttribute("data-m") === mode ? "true" : "false");
+    });
+    newRound();
+  });
+  document.getElementById("again").addEventListener("click", newRound);
+
+  newRound();
+})();
+</script>
+
+</body></html>
