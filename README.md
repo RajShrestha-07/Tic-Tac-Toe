@@ -2,7 +2,7 @@
 
 Tic Tac Toe is a small web game. Play against the computer or take turns with a friend on the same device. It keeps score across rounds and shows the winning line.
 
-Live demo: https://YOUR-USERNAME.github.io/Tic-Tac-Toe/
+Live demo: https://rajshrestha-07.github.io/Tic-Tac-Toe/
 
 Built with: HTML, CSS and JavaScript.
 
